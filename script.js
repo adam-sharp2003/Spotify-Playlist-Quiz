@@ -2,7 +2,7 @@ document.getElementById("playlistForm").addEventListener("submit", function (eve
 	event.preventDefault();
 	
 	const clientId = '1eb3528b7fc84e6cb4e0a6499af25b50';
-	const redirectUri = 'https://adam-sharp2003.github.io/Spotify-Playlist-Quiz';
+	const redirectUri = 'https://adam-sharp2003.github.io/Spotify-Playlist-Quiz/index.html';
 
 	if (window.location.hash.includes('access_token')) fetchAllTracks(
 		window.location.hash.substring(1).split('&').reduce((acc, pair) => (pair.startsWith('access_token=') ? pair.split('=')[1] : acc), ''), 
