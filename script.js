@@ -1,27 +1,27 @@
-document.getElementById("playlistForm").addEventListener("submit", function (event) {
+const clientId = '1eb3528b7fc84e6cb4e0a6499af25b50';
+const redirectUri = 'https://adam-sharp2003.github.io/Spotify-Playlist-Quiz/';
+
+document.getElementById(`playlistForm`).innerHTML = !window.location.hash.includes('access_token') ?
+	`<button onclick=login()>Login to Spotify</button>`:
+	`<label for="playlistUrl">Enter Spotify Playlist URL:</label>
+	<input type="text" id="playlistUrl" required>
+	<button type="submit">Start Quiz</button>`
+
+function login() {
+	window.location.href = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=token&redirect_uri=${redirectUri}&scope=${encodeURIComponent('playlist-read-private')}`;
+}
+
+document.getElementById("playlistForm").addEventListener("submit", async function (event) {
 	event.preventDefault();
-	
-	const clientId = '1eb3528b7fc84e6cb4e0a6499af25b50';
-	const redirectUri = 'https://adam-sharp2003.github.io/Spotify-Playlist-Quiz/index.html';
-
-	if (window.location.hash.includes('access_token')) fetchAllTracks(
-		window.location.hash.substring(1).split('&').reduce((acc, pair) => (pair.startsWith('access_token=') ? pair.split('=')[1] : acc), ''), 
-		`https://api.spotify.com/v1/playlists/${document.getElementById("playlistUrl").value.split("/playlist/")[1]}`
-	)
-	else window.location.href = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=token&redirect_uri=${redirectUri}&scope=${encodeURIComponent('playlist-read-private')}`;
-	
-});
-
-async function fetchAllTracks(accessToken, playlistUrlApi) {
 	document.getElementById("playlistUrl").insertAdjacentHTML("afterend", `<meter id="download" value="0" min="0"></meter><br>`)
 
 	async function fetchTracks(url) {
 		const response = await fetch(url, {
 			headers: {
-				Authorization: `Bearer ${accessToken}`,
+				Authorization: `Bearer ${window.location.hash.substring(1).split('&').reduce((acc, pair) => (pair.startsWith('access_token=') ? pair.split('=')[1] : acc), '')}`,
 			},
 		});
-
+		if (response.status == 401) window.location.href = redirectUri
 		const data = await response.json();
 		document.getElementById("download").max = data.tracks ? data.tracks.total : data.total
 		document.getElementById("download").value += 100
@@ -35,8 +35,9 @@ async function fetchAllTracks(accessToken, playlistUrlApi) {
 		}
 	}
 
-	fetchTracks(playlistUrlApi);
-}
+	fetchTracks(`https://api.spotify.com/v1/playlists/${document.getElementById("playlistUrl").value.split("/playlist/")[1]}`);
+	
+});
 
 const fetchArtist = async artistName => (await (await fetch(`https://musicbrainz.org/ws/2/artist/?query=${encodeURIComponent(artistName)}&fmt=json`)).json()).artists[0];
 
