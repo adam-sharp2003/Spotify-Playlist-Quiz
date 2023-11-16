@@ -1,11 +1,37 @@
 const clientId = '1eb3528b7fc84e6cb4e0a6499af25b50';
-const redirectUri = 'https://adam-sharp2003.github.io/Spotify-Playlist-Quiz/';
+const redirectUri = 'http://127.0.0.1:5500/index.html';
+const access_token = window.location.hash.substring(1).split('&').reduce((acc, pair) => (pair.startsWith('access_token=') ? pair.split('=')[1] : acc), '')
+
+var playListTypes = {
+	Custom: () => '<label for="playlistUrl">Enter Spotify Playlist URL:</label><input type="text" id="playlistUrl" required>',
+	Library: async () => {
+		document.getElementById("playlist").insertAdjacentHTML("afterend", `<meter id="download" value="0" min="0"></meter>`)
+		async function fetchPlaylists(url) {
+			const response = await fetch(url, {
+				headers: {
+					Authorization: `Bearer ${access_token}`,
+				},
+			});
+			const data = await response.json();
+			document.getElementById("download").max = data.total
+			document.getElementById("download").value += 20
+			playlists = playlists.concat(data.items);
+			if (data.next) await fetchPlaylists(data.next)
+		}
+		if (!playlists.length) await fetchPlaylists(`https://api.spotify.com/v1/me/playlists/`);
+		document.getElementById("download").remove()
+		return `<label for="playlistUrl">Select Spotify PlayList:</label>
+		<select name="playlistUrl" id="playlistUrl">` + playlists.map(p => `<option value="${p.external_urls.spotify}">${p.name}</option>)`).join('') + '</select>'
+	}
+}
 
 document.getElementById(`playlistForm`).innerHTML = !window.location.hash.includes('access_token') ?
-	`<button onclick=login()>Login to Spotify</button>`:
-	`<label for="playlistUrl">Enter Spotify Playlist URL:</label>
-	<input type="text" id="playlistUrl" required>
-	<button type="submit">Start Quiz</button>`
+	`<button onclick=login()>Login to Spotify</button><div id="playlistType" style="display: none"></div>`:
+	`<select name="playlistType" id="playlistType">`+ Object.keys(playListTypes).map(p => `<option value="${p}">${p}</option>`).join() + `</select>
+	<div id=playlist style="display: contents;">${playListTypes["Custom"]()}</div>
+	<button type="submit">Start Ranking</button>`
+
+document.getElementById("playlistType").onchange = async value => document.getElementById("playlist").innerHTML = await playListTypes[value.target.value]()
 
 function login() {
 	window.location.href = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=token&redirect_uri=${redirectUri}&scope=${encodeURIComponent('playlist-read-private')}`;
@@ -18,7 +44,7 @@ document.getElementById("playlistForm").addEventListener("submit", async functio
 	async function fetchTracks(url) {
 		const response = await fetch(url, {
 			headers: {
-				Authorization: `Bearer ${window.location.hash.substring(1).split('&').reduce((acc, pair) => (pair.startsWith('access_token=') ? pair.split('=')[1] : acc), '')}`,
+				Authorization: `Bearer ${access_token}`,
 			},
 		});
 		if (response.status == 401) window.location.href = redirectUri
@@ -35,6 +61,7 @@ document.getElementById("playlistForm").addEventListener("submit", async functio
 		}
 	}
 
+	tracks = []
 	fetchTracks(`https://api.spotify.com/v1/playlists/${document.getElementById("playlistUrl").value.split("/playlist/")[1]}`);
 	
 });
@@ -88,7 +115,7 @@ const questionTypes = [
 
 document.getElementById('selectedQuestions').innerHTML = questionTypes.map(q => `<input type="checkbox" id="${encodeURIComponent(q.name)}" checked><label for="${encodeURIComponent(q.name)}">${q.name}</label>`).join('')
 
-let i = 0, correct = 0, incorrect = 0, tracks = [], artist = {}, track = {}, question = {};
+let i = 0, correct = 0, incorrect = 0, tracks = [], artist = {}, track = {}, question = {}, playlists = []
 
 async function displayQuestion() {
 	track = tracks.sort(() => 0.5-Math.random())[i], artist = await fetchArtist(track.artists[0].name);	
